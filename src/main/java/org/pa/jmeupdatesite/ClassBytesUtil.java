@@ -220,7 +220,7 @@ public class ClassBytesUtil {
 		}
 
 		// ignore type which aren't object types
-		if (type.getSort() != type.OBJECT) {
+		if (type.getSort() != Type.OBJECT) {
 			return;
 		}
 
