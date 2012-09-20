@@ -130,5 +130,16 @@ public class JMLib {
 		}
 		return false;
 	}
+	
+	@Override
+	public int hashCode() {
+		return getJarFile().hashCode();
+	}
+	
+	
+	@Override
+	public boolean equals(Object obj) {
+		return obj != null && obj.getClass() == JMLib.class && ((JMLib)obj).getJarFile().equals(getJarFile());
+	}
 
 }
