@@ -101,6 +101,7 @@ public class JMLib {
 		if (packageDependencies == null) {
 			packageDependencies = Sets.difference(getReferencedPackageNames(),
 					getProvidedPackages());
+			packageDependencies = Sets.filter(packageDependencies, ClassNameFilters.NOT_JRE_CLASS_NAME);
 		}
 		return Collections.unmodifiableSet(packageDependencies);
 	}
