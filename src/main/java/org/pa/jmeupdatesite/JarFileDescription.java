@@ -13,26 +13,52 @@ import java.util.zip.ZipFile;
 
 import com.google.common.collect.Sets;
 
-public class JarFileDescriptions {
+/**
+ * Provides information about classes in a jar-file. This includes dependencies
+ * and package names.
+ */
+public class JarFileDescription {
 
-	private final File jarFile;
-	private final ZipFile jarZip;
+	private final File jarFile; // the file
+	private final ZipFile jarZip; // the unzip object
 
+	/*
+	 * Result cache.
+	 */
 	private Set<String> packageDependencies;
 	private Set<String> providedPackages;
 	private Set<String> referencedClassNames;
 	private Set<String> referencedPackageNames;
 	private Set<String> zipDirectories;
 
-	public JarFileDescriptions(File jarFile) throws IOException {
+	/**
+	 * Creates a jar file description.
+	 * 
+	 * @param jarFile
+	 *            the jar-file to describe, must not ne <code>null</code> and a
+	 *            valid jar-file.
+	 * @throws IOException
+	 *             if an I/O error has occured
+	 */
+	public JarFileDescription(File jarFile) throws IOException {
 		this.jarFile = notNull(jarFile);
 		this.jarZip = new ZipFile(jarFile);
 	}
 
+	/**
+	 * Returns the jar-file as specified in the constructor.
+	 * 
+	 * @return the jar-file, will never be <code>null</code>
+	 */
 	public File getFile() {
 		return jarFile;
 	}
 
+	/**
+	 * Returns the names of the packages contained in the jar-file.
+	 * 
+	 * @return a unmodifiable set of package names
+	 */
 	public Set<String> getProvidedPackages() {
 		if (providedPackages == null) {
 			providedPackages = new HashSet<String>();
@@ -47,6 +73,11 @@ public class JarFileDescriptions {
 		return Collections.unmodifiableSet(providedPackages);
 	}
 
+	/**
+	 * Returns a set of canonical class names contained in the jar-file.
+	 * 
+	 * @return a unmodifiable set of canonical class names.
+	 */
 	public Set<String> getClasseNames() {
 		if (referencedClassNames == null) {
 			referencedClassNames = new HashSet<String>();
@@ -56,7 +87,7 @@ public class JarFileDescriptions {
 				if (name.endsWith(".class")) {
 					try {
 						referencedClassNames.addAll(ClassBytesUtil
-								.findUsedSimpleClassNames(jarZip
+								.findClassNames(jarZip
 										.getInputStream(entry)));
 					} catch (IllegalArgumentException e) {
 						// TODO Auto-generated catch block
@@ -72,6 +103,13 @@ public class JarFileDescriptions {
 		return Collections.unmodifiableSet(referencedClassNames);
 	}
 
+	/**
+	 * Returns a set of package names referenced by classes in this jar-file.
+	 * This include the packages contained in this jar-file as well as foreign
+	 * packages.
+	 * 
+	 * @return a unmodifiable set of package names
+	 */
 	public Set<String> getReferencedPackageNames() {
 		if (referencedPackageNames == null) {
 			referencedPackageNames = new HashSet<String>();
@@ -81,7 +119,7 @@ public class JarFileDescriptions {
 				if (name.endsWith(".class")) {
 					try {
 						referencedPackageNames.addAll(ClassBytesUtil
-								.findPackageNamesOfUsedClasses(jarZip
+								.findPackageNames(jarZip
 										.getInputStream(entry)));
 					} catch (IllegalArgumentException e) {
 						// TODO Auto-generated catch block
@@ -97,6 +135,12 @@ public class JarFileDescriptions {
 		return Collections.unmodifiableSet(referencedPackageNames);
 	}
 
+	/**
+	 * Returns a set of package names referenced by classes in this jar-file,
+	 * but not contained in it. These are called foreign packages, too.
+	 * 
+	 * @return a unmodifiable set of packages
+	 */
 	public Set<String> getPackageDependencies() {
 		if (packageDependencies == null) {
 			packageDependencies = Sets.difference(getReferencedPackageNames(),
@@ -106,6 +150,9 @@ public class JarFileDescriptions {
 		return Collections.unmodifiableSet(packageDependencies);
 	}
 
+	/**
+	 * @return a unmodifiable of all directories in this jar-file
+	 */
 	private Set<String> getDirectories() {
 		if (zipDirectories == null) {
 			zipDirectories = new HashSet<String>();
@@ -119,6 +166,12 @@ public class JarFileDescriptions {
 		return Collections.unmodifiableSet(zipDirectories);
 	}
 
+	/**
+	 * @param the
+	 *            name of a directory in this jar-file
+	 * @return whether the specified directory contains at least one class file
+	 *         or not
+	 */
 	private boolean hasClassFile(String directory) {
 		for (ZipEntry entry : list(jarZip.entries())) {
 			String name = entry.getName();
@@ -140,7 +193,7 @@ public class JarFileDescriptions {
 	
 	@Override
 	public boolean equals(Object obj) {
-		return obj != null && obj.getClass() == JarFileDescriptions.class && ((JarFileDescriptions)obj).getFile().equals(getFile());
+		return obj != null && obj.getClass() == JarFileDescription.class && ((JarFileDescription)obj).getFile().equals(getFile());
 	}
 
 }

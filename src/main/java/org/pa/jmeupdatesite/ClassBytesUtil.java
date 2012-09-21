@@ -2,8 +2,8 @@ package org.pa.jmeupdatesite;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Set;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,14 +17,35 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
+/**
+ * Some utilities to ease the work with class binaries.
+ */
 public class ClassBytesUtil {
 
-	public static Set<String> findUsedSimpleClassNames(
-			final InputStream is) throws IllegalArgumentException, IOException {
+	/**
+	 * Returns a list with all class names of classes referenced in the
+	 * specified class file. Inner classes and primitive types are excluded.
+	 * Returns the canonical names of the returned classes as defined by the
+	 * Java Language Specification.
+	 * 
+	 * @param is
+	 *            The input stream providing class bytes of a single class from
+	 *            its beginning to its end. Must not be <code>null</code>.
+	 * @return a set with class names
+	 * @throws IllegalArgumentException
+	 *             if <code>is</code> is <code>null</code>
+	 * @throws IOException
+	 *             if a problem occurs during reading
+	 */
+	public static Set<String> findClassNames(final InputStream is)
+			throws IllegalArgumentException, IOException {
 		Validate.notNull(is, "The input stream must not be null");
 		final HashSet<String> result = new HashSet<String>();
 
 		ClassReader classReader = new ClassReader(is);
+
+		// we simply make use of every possible visitor and put every mentioned
+		// class name into the result set
 
 		final AnnotationVisitor annotationVisitor = new AnnotationVisitor() {
 
@@ -193,21 +214,45 @@ public class ClassBytesUtil {
 
 		return result;
 	}
-	
-	public static Set<String> findPackageNamesOfUsedClasses(InputStream is) throws IllegalArgumentException, IOException {
+
+	/**
+	 * Returns a list with the package names of all referenced classes as
+	 * returned by {@link #findClassNames(InputStream)}.
+	 * 
+	 * @param is
+	 *            The input stream providing class bytes of a single class from
+	 *            its beginning to its end. Must not be <code>null</code>. *
+	 * @return a set with package names
+	 * @throws IllegalArgumentException
+	 *             if <code>is</code> is <code>null</code>
+	 * @throws IOException
+	 *             if a problem occurs during reading
+	 */
+	public static Set<String> findPackageNames(InputStream is)
+			throws IllegalArgumentException, IOException {
 		HashSet<String> result = new HashSet<String>();
-		for(String className : findUsedSimpleClassNames(is)) {
+		for (String className : findClassNames(is)) {
 			int index = className.lastIndexOf('.');
-			if(index != -1) {
+			if (index != -1) {
 				result.add(className.substring(0, index));
 			}
 		}
 		return result;
 	}
 
+	/**
+	 * Matches class names inside a La.b.c.MyClass; like class name notation.
+	 */
 	private final static Pattern CLASS_NAME_PATTERN = Pattern
 			.compile("(?<=L)[a-z]+/[\\w/]+(?=;)");
 
+	/**
+	 * Helper method. Validates and clean up class names before adding them to a
+	 * set.
+	 * 
+	 * @param desc
+	 * @param set
+	 */
 	private static void addClassFromTypedefToSet(String desc, Set<String> set) {
 		if (desc == null) {
 			return;
