@@ -17,7 +17,7 @@ import com.google.common.collect.Sets;
  * Provides information about classes in a jar-file. This includes dependencies
  * and package names.
  */
-public class JarFileDescription {
+public class JarFileDescription implements Comparable<JarFileDescription> {
 
 	private final File jarFile; // the file
 	private final ZipFile jarZip; // the unzip object
@@ -185,15 +185,21 @@ public class JarFileDescription {
 		return false;
 	}
 	
+	public int compareTo(JarFileDescription o) {
+		return getFile().compareTo(o.getFile());
+	}
+
 	@Override
 	public int hashCode() {
-		return getFile().hashCode();
+		return getFile().getName().hashCode();
 	}
 	
 	
 	@Override
 	public boolean equals(Object obj) {
-		return obj != null && obj.getClass() == JarFileDescription.class && ((JarFileDescription)obj).getFile().equals(getFile());
+		return obj == this || obj != null
+				&& obj.getClass() == JarFileDescription.class
+				&& ((JarFileDescription) obj).getFile().equals(getFile());
 	}
 
 }

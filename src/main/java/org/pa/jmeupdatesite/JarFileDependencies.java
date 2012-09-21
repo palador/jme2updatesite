@@ -4,6 +4,7 @@ import static org.apache.commons.lang3.Validate.notNull;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -19,6 +20,16 @@ public class JarFileDependencies {
 
 	private final Set<JarFileDescription> availableJarLibs; //
 	private final JarFileDescription jarLib;
+
+	// dependencies for each single package
+	private final Set<Dependency> dependencies = new HashSet<Dependency>();
+	private final Set<String> unresolvedPackages = new HashSet<String>();
+
+	/*
+	 * cached results
+	 */
+	private Set<Dependency> oneToOneDependencies;
+	private Set<Dependency> oneToManyDependencies;
 
 	/**
 	 * Creates a jar-file dependencies informational instance.
@@ -42,12 +53,14 @@ public class JarFileDependencies {
 	}
 
 	/**
-	 * Compute the dependencies.
+	 * Compute the dependencies. Called once at initialization. Each computed
+	 * dependency describes a single package here.
 	 */
 	private void computeDependencies() {
 		for (String packageDependency : jarLib.getPackageDependencies()) {
 
-			ArrayList<JarFileDescription> providePackageDependencies = new ArrayList<JarFileDescription>();
+			Dependency dependency = new Dependency(jarLib);
+			dependency.packages.add(packageDependency);
 
 			for (JarFileDescription other : availableJarLibs) {
 				// don't compare with self
@@ -56,40 +69,116 @@ public class JarFileDependencies {
 				}
 
 				if (other.getProvidedPackages().contains(packageDependency)) {
-					providePackageDependencies.add(other);
+					dependency.toSet.add(other);
 				}
 			}
 
-			switch (providePackageDependencies.size()) {
-			case 0:
-				System.err
-						.println("CANNT RESOLVE:       "
-								+ jarLib.getFile().getName() + "::"
-								+ packageDependency);
-				break;
-			case 1:
-				System.out
-						.println("RESOLVED:            "
-								+ jarLib.getFile().getName()
-								+ "::"
-								+ packageDependency
-								+ " --> "
-								+ providePackageDependencies.get(0).getFile()
-										.getName());
-				break;
-
-			default:
-				System.err
-						.println("RESOLVED MANY TIMES: "
-								+ jarLib.getFile().getName() + "::"
-								+ packageDependency);
-				for (JarFileDescription other : providePackageDependencies) {
-					System.err.println(" --> " + other.getFile().getName());
-				}
-				break;
+			if (dependency.toSet.isEmpty()) { // no jar-file is able to resolve
+												// package dependency
+				unresolvedPackages.add(packageDependency);
+			} else { // resolved
+				dependencies.add(dependency);
 			}
-
 		}
+	}
+
+	/**
+	 * Returns a set of dependencies which are resolved by exactly one jar-file.
+	 * Each dependency contains at least one package name.
+	 * 
+	 * @return a unmodifiable set of one to one dependencies
+	 */
+	public Set<Dependency> getOneToOneDependencies() {
+		if (oneToOneDependencies == null) {
+			ArrayList<Dependency> oneToOneList = new ArrayList<Dependency>();
+
+
+			for (Dependency singlePckDep : dependencies) {
+				if (singlePckDep.isOneToMany()) {
+					continue;
+				}
+				JarFileDescription to = singlePckDep.getToDescSet().iterator()
+						.next();
+
+				Dependency resultDep = findDependencyByToOrCreate(to,
+						oneToOneList);
+				resultDep.packages.addAll(singlePckDep.getPackages());
+			}
+			oneToOneDependencies = new HashSet<Dependency>(oneToOneList);
+		}
+
+		return oneToOneDependencies;
+	}
+
+	/**
+	 * Returns a set of dependencies which are resolved by more than one
+	 * jar-file. Each dependency contains exactly one package name and mode than
+	 * one 'to' jar-files.
+	 * 
+	 * @return a unmodifiable set of one to one dependencies
+	 */
+	public Set<Dependency> getOneToManyDependencies() {
+		if (oneToManyDependencies == null) {
+			ArrayList<Dependency> oneToManyList = new ArrayList<JarFileDependencies.Dependency>();
+
+
+			for (Dependency singlePckDep : dependencies) {
+				if (singlePckDep.isOneToOne()) {
+					continue;
+				}
+				for (JarFileDescription to : singlePckDep.getToDescSet()) {
+					String packageName = singlePckDep.packages.iterator()
+							.next();
+
+					// find oneToMany with package
+					Dependency oneToOneWithPckg = null;
+					for (Dependency oneToOne : oneToManyList) {
+						if (oneToOne.getPackages().contains(packageName)) {
+							oneToOneWithPckg = oneToOne;
+							break;
+						}
+					}
+					if (oneToOneWithPckg == null) {
+						oneToOneWithPckg = new Dependency(jarLib);
+						oneToOneWithPckg.packages.add(packageName);
+						oneToManyList.add(oneToOneWithPckg);
+					}
+					oneToOneWithPckg.toSet.add(to);
+				}
+			}
+
+			oneToManyDependencies = new HashSet<Dependency>(oneToManyList);
+		}
+
+		return oneToManyDependencies;
+	}
+
+	/**
+	 * Returns a set with all unresolved packages.
+	 * 
+	 * @return a unmodifiable set with all unresolved packages, may be empty but
+	 *         will never be <code>null</code>
+	 */
+	public Set<String> getUnresolvedPackages() {
+		return Collections.unmodifiableSet(unresolvedPackages);
+	}
+
+	private Dependency findDependencyByToOrCreate(JarFileDescription to,
+			Collection<Dependency> set) {
+		Dependency result = null;
+		for (Dependency dep : set) {
+			if (dep.getToDescSet().contains(to)) {
+				result = dep;
+				break;
+			}
+		}
+		if (result == null) {
+			// create and add if not found
+			result = new Dependency(jarLib);
+			result.toSet.add(to);
+			set.add(result);
+		}
+		return result;
 	}
 
 	/**
@@ -97,9 +186,8 @@ public class JarFileDependencies {
 	 */
 	public static final class Dependency {
 		private final JarFileDescription from;
-		final Set<JarFileDescription> toSet = new HashSet<JarFileDescription>();
-		final Set<String> packages = new HashSet<String>();
-		private int lazyHash;
+		private final Set<JarFileDescription> toSet = new HashSet<JarFileDescription>();
+		private final Set<String> packages = new HashSet<String>();
 
 		Dependency(JarFileDescription from) throws IllegalArgumentException {
 			this.from = notNull(from, "from must not be null");
@@ -156,6 +244,15 @@ public class JarFileDependencies {
 			return toSet;
 		}
 
+		public JarFileDescription getSingleToDesc()
+				throws IllegalStateException {
+			if (isOneToMany()) {
+				throw new IllegalStateException(
+						"cannot return single dependency resolver, because there are many");
+			}
+			return toSet.iterator().next();
+		}
+
 		/**
 		 * Returns whether <i>from</i> has any dependencies to <i>to</i>
 		 * 
@@ -166,20 +263,28 @@ public class JarFileDependencies {
 		}
 
 		/**
-		 * Returns whether the dependencies are resolved by many jar-files.
+		 * Returns whether this describes a one to one dependency with many
+		 * packages.
 		 * 
 		 * @return
 		 */
-		public boolean areDependeciesResolvedByMany() {
+		public boolean isOneToMany() {
 			return toSet.size() > 1;
+		}
+
+		/**
+		 * Returns whether this describes a one to many dependency with a single
+		 * package.
+		 * 
+		 * @return
+		 */
+		public boolean isOneToOne() {
+			return toSet.size() == 1;
 		}
 
 		@Override
 		public int hashCode() {
-			if (lazyHash == 0) {
-				lazyHash = Objects.hashCode(from, toSet, packages);
-			}
-			return lazyHash;
+			return Objects.hashCode(from, toSet, packages);
 		}
 
 		@Override
