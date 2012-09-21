@@ -13,7 +13,7 @@ import java.util.zip.ZipFile;
 
 import com.google.common.collect.Sets;
 
-public class JMLib {
+public class JarFileDescriptions {
 
 	private final File jarFile;
 	private final ZipFile jarZip;
@@ -24,12 +24,12 @@ public class JMLib {
 	private Set<String> referencedPackageNames;
 	private Set<String> zipDirectories;
 
-	public JMLib(File jarFile) throws IOException {
+	public JarFileDescriptions(File jarFile) throws IOException {
 		this.jarFile = notNull(jarFile);
 		this.jarZip = new ZipFile(jarFile);
 	}
 
-	public File getJarFile() {
+	public File getFile() {
 		return jarFile;
 	}
 
@@ -47,7 +47,7 @@ public class JMLib {
 		return Collections.unmodifiableSet(providedPackages);
 	}
 
-	public Set<String> getReferencedClassNames() {
+	public Set<String> getClasseNames() {
 		if (referencedClassNames == null) {
 			referencedClassNames = new HashSet<String>();
 
@@ -134,13 +134,13 @@ public class JMLib {
 	
 	@Override
 	public int hashCode() {
-		return getJarFile().hashCode();
+		return getFile().hashCode();
 	}
 	
 	
 	@Override
 	public boolean equals(Object obj) {
-		return obj != null && obj.getClass() == JMLib.class && ((JMLib)obj).getJarFile().equals(getJarFile());
+		return obj != null && obj.getClass() == JarFileDescriptions.class && ((JarFileDescriptions)obj).getFile().equals(getFile());
 	}
 
 }

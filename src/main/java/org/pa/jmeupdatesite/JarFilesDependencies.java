@@ -9,10 +9,10 @@ import java.util.Set;
 
 public class JarFilesDependencies {
 
-	private final Set<JMLib> availableJarLibs;
-	private final JMLib jarLib;
+	private final Set<JarFileDescriptions> availableJarLibs;
+	private final JarFileDescriptions jarLib;
 
-	public JarFilesDependencies(JMLib jarLib, Set<JMLib> availableJarLibs) {
+	public JarFilesDependencies(JarFileDescriptions jarLib, Set<JarFileDescriptions> availableJarLibs) {
 		this.availableJarLibs = notNull(availableJarLibs,
 				"available jar libs must not be null");
 		this.jarLib = notNull(jarLib, "jarLib must not be null");
@@ -23,9 +23,9 @@ public class JarFilesDependencies {
 	private void computeDependencies() {
 		for (String packageDependency : jarLib.getPackageDependencies()) {
 
-			ArrayList<JMLib> providePackageDependencies = new ArrayList<JMLib>();
+			ArrayList<JarFileDescriptions> providePackageDependencies = new ArrayList<JarFileDescriptions>();
 
-			for (JMLib other : availableJarLibs) {
+			for (JarFileDescriptions other : availableJarLibs) {
 				// don't compare with self
 				if (other.equals(jarLib)) {
 					continue;
@@ -39,25 +39,25 @@ public class JarFilesDependencies {
 			switch (providePackageDependencies.size()) {
 			case 0:
 				System.err.println("CANNT RESOLVE:       "
-						+ jarLib.getJarFile().getName() + "::"
+						+ jarLib.getFile().getName() + "::"
 						+ packageDependency);
 				break;
 			case 1:
 				System.out.println("RESOLVED:            "
-						+ jarLib.getJarFile().getName()
+						+ jarLib.getFile().getName()
 						+ "::"
 						+ packageDependency
 						+ " --> "
-						+ providePackageDependencies.get(0).getJarFile()
+						+ providePackageDependencies.get(0).getFile()
 								.getName());
 				break;
 
 			default:
 				System.err.println("RESOLVED MANY TIMES: "
-						+ jarLib.getJarFile().getName() + "::"
+						+ jarLib.getFile().getName() + "::"
 						+ packageDependency);
-				for (JMLib other : providePackageDependencies) {
-					System.err.println(" --> " + other.getJarFile().getName());
+				for (JarFileDescriptions other : providePackageDependencies) {
+					System.err.println(" --> " + other.getFile().getName());
 				}
 				break;
 			}
@@ -67,17 +67,17 @@ public class JarFilesDependencies {
 
 	public static void main(String[] args) throws Exception {
 		File libDir = new File("/home/palador/jmonkey/lib");
-		Set<JMLib> pool = new HashSet<JMLib>();
+		Set<JarFileDescriptions> pool = new HashSet<JarFileDescriptions>();
 		for (File f : libDir.listFiles()) {
 			if (f.isFile() && f.getName().endsWith(".jar")) {
 				System.out.println("ADD TO POOL: " + f);
-				pool.add(new JMLib(f));
+				pool.add(new JarFileDescriptions(f));
 			}
 		}
 
-		for (JMLib lib : pool) {
+		for (JarFileDescriptions lib : pool) {
 			System.out.println("---------------------------------------------");
-			System.out.println("-- " + lib.getJarFile().getName());
+			System.out.println("-- " + lib.getFile().getName());
 			System.out.println("---------------------------------------------");
 			
 			JarFilesDependencies dep = new JarFilesDependencies(lib, pool);
