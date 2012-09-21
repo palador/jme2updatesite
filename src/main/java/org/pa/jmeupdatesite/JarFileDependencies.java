@@ -7,12 +7,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
-public class JarFilesDependencies {
+public class JarFileDependencies {
 
 	private final Set<JarFileDescriptions> availableJarLibs;
 	private final JarFileDescriptions jarLib;
 
-	public JarFilesDependencies(JarFileDescriptions jarLib, Set<JarFileDescriptions> availableJarLibs) {
+	public JarFileDependencies(JarFileDescriptions jarLib, Set<JarFileDescriptions> availableJarLibs) {
 		this.availableJarLibs = notNull(availableJarLibs,
 				"available jar libs must not be null");
 		this.jarLib = notNull(jarLib, "jarLib must not be null");
@@ -80,7 +80,7 @@ public class JarFilesDependencies {
 			System.out.println("-- " + lib.getFile().getName());
 			System.out.println("---------------------------------------------");
 			
-			JarFilesDependencies dep = new JarFilesDependencies(lib, pool);
+			JarFileDependencies dep = new JarFileDependencies(lib, pool);
 		}
 	}
 }
